@@ -1,0 +1,3 @@
+-x TestLua
+-cp test
+-lib lua

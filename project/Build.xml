@@ -1,0 +1,81 @@
+<xml>
+
+	<include name="${HXCPP}/build-tool/BuildCommon.xml"/>
+
+	<set name="mobile" value="1" if="iphone"/>
+	<set name="mobile" value="1" if="android"/>
+	<set name="mobile" value="1" if="blackberry"/>
+	<set name="mobile" value="1" if="webos"/>
+
+	<files id="common">
+		<compilerflag value="-Ilua"/>
+		<file name="common/ExternalInterface.cpp"/>
+	</files>
+
+	<files id="lua">
+		<compilerflag value="-Ilua"/>
+		<file name="lua/lapi.c" />
+		<file name="lua/lcode.c" />
+		<file name="lua/lctype.c" />
+		<file name="lua/ldebug.c" />
+		<file name="lua/ldo.c" />
+		<file name="lua/ldump.c" />
+		<file name="lua/lfunc.c" />
+		<file name="lua/lgc.c" />
+		<file name="lua/llex.c" />
+		<file name="lua/lmem.c" />
+		<file name="lua/lobject.c" />
+		<file name="lua/lopcodes.c" />
+		<file name="lua/lparser.c" />
+		<file name="lua/lstate.c" />
+		<file name="lua/lstring.c" />
+		<file name="lua/ltable.c" />
+		<file name="lua/ltm.c" />
+		<file name="lua/lundump.c" />
+		<file name="lua/lvm.c" />
+		<file name="lua/lzio.c" />
+	</files>
+
+	<files id="lua-libs">
+		<file name="lua/lauxlib.c" />
+		<file name="lua/lbaselib.c" />
+		<file name="lua/lmathlib.c" />
+		<file name="lua/lstrlib.c" />
+		<file name="lua/ltablib.c" />
+		<!-- additional libraries
+			<file name="lua/lbitlib.c" />
+			<file name="lua/lcorolib.c" />
+			<file name="lua/ldblib.c" />
+			<file name="lua/liolib.c" />
+			<file name="lua/loslib.c" />
+			<file name="lua/loadlib.c" />
+			<file name="lua/linit.c" />
+		-->
+	</files>
+
+	<set name="name_prefix" value="lib" if="iphone"/>
+	<set name="ARM_ARCH" value="-v7" if="HXCPP_ARMV7"/>
+	<set name="name_extra" value=".iphoneos${ARM_ARCH}" if="iphoneos"/>
+	<set name="name_extra" value=".iphonesim" if="iphonesim"/>
+	<set name="name_extra" value="-x86" if="simulator" unless="iphonesim" />
+	<set name="tool" value="exe" unless="iphone"/>
+	<set name="tool" value="static_link" if="iphone"/>
+	<set name="ndll-tool" value="dll" unless="iphone"/>
+	<set name="ndll-tool" value="static_link" if="iphone"/>
+	<set name="SLIBEXT" value=".lib" if="windows"/>
+	<set name="SLIBEXT" value=".a" unless="windows"/>
+	<set name="SLIBEXT" value=".so" if="webos"/>
+
+	<target id="NDLL" output="${name_prefix}lua${debug_extra}${name_extra}" tool="linker" toolid="${ndll-tool}">
+		<outdir name="../ndll/${BINDIR}"/>
+		<ext value=".ndll" unless="mobile"/>
+		<files id="lua"/>
+		<files id="lua-libs"/>
+		<files id="common"/>
+	</target>
+
+	<target id="default">
+		<target id="NDLL"/>
+	</target>
+
+</xml>

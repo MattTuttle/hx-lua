@@ -1,0 +1,6 @@
+*.n
+obj/
+ndll/
+
+.DS_Store
+Thumbs.db
