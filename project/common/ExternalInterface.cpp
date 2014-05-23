@@ -110,7 +110,7 @@ void haxe_to_lua(value v, lua_State *l)
 	}
 }
 
-static value lua_execute(value inScript, value inArgs)
+static value lua_execute(value inScript, value inContext)
 {
 	static const luaL_Reg lualibs[] = {
 		{ "base", luaopen_base },
@@ -123,16 +123,16 @@ static value lua_execute(value inScript, value inArgs)
 
 	// load libraries
 	const luaL_Reg *lib = lualibs;
-	while (lib->func != NULL)
+	for (;lib->func != NULL; lib++)
 	{
-		lib->func(l);
+		luaL_requiref(l, lib->name, lib->func, 1);
 		lua_settop(l, 0);
-		lib++;
 	}
 
-	if (!val_is_null(inArgs) && val_is_object(inArgs))
+	// load context, if any
+	if (!val_is_null(inContext) && val_is_object(inContext))
 	{
-		val_iter_fields(inArgs, haxe_iter_global, l);
+		val_iter_fields(inContext, haxe_iter_global, l);
 	}
 
 	// load the script

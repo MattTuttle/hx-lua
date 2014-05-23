@@ -7,18 +7,18 @@ import neko.Lib;
 class Lua
 {
 
-	public static function run(script:String, ?args:Dynamic):Dynamic
+	public static function run(script:String, ?context:Dynamic):Dynamic
 	{
-		return lua_execute(script, args);
+		return lua_execute(script, context);
 	}
 
-	private static function load(func:String, args:Int)
+	private static function load(func:String, numArgs:Int)
 	{
 		#if neko
 		loadNekoAPI();
 		#end
 
-		return Lib.load("lua", func, args);
+		return Lib.load("lua", func, numArgs);
 	}
 
 	#if neko
