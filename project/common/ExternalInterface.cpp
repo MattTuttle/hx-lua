@@ -155,14 +155,14 @@ void haxe_to_lua(value v, lua_State *l)
 
 static value lua_execute(value inScript, value inContext)
 {
+	value v;
+	lua_State *l = luaL_newstate();
 	static const luaL_Reg lualibs[] = {
 		{ "base", luaopen_base },
 		{ "math", luaopen_math },
 		{ "table", luaopen_table },
 		{ NULL, NULL }
 	};
-
-	lua_State *l = luaL_newstate();
 
 	// load libraries
 	const luaL_Reg *lib = lualibs;
@@ -179,17 +179,20 @@ static value lua_execute(value inScript, value inContext)
 	}
 
 	// run the script
-	if (luaL_dostring(l, val_string(inScript)) != LUA_OK)
+	if (luaL_dostring(l, val_string(inScript)) == LUA_OK)
 	{
-		return alloc_bool(false);
+		// convert the lua values to haxe
+		int lua_v;
+		while ((lua_v = lua_gettop(l)) != 0)
+		{
+			v = lua_value_to_haxe(l, lua_v);
+			lua_pop(l, 1);
+		}
 	}
-
-	// convert the lua values to haxe
-	value v;
-	int lua_v;
-	while ((lua_v = lua_gettop(l)) != 0)
+	else
 	{
-		v = lua_value_to_haxe(l, lua_v);
+		// get error message
+		v = alloc_string(lua_tostring(l, -1));
 		lua_pop(l, 1);
 	}
 
