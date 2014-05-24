@@ -8,8 +8,6 @@
 
 #include <hx/CFFI.h>
 #include <cmath>
-#include <vector>
-#include <string>
 
 extern "C" {
 	#include "lua.h"
@@ -130,27 +128,12 @@ static int haxe_callback(lua_State *l)
 	return 0;
 }
 
-void haxe_value(lua_State *l, value v, const char *name)
-{
-	if (val_is_function(v))
-	{
-		// TODO: figure out a way to delete/cleanup the AutoGCRoot pointers
-		lua_pushlightuserdata(l, new AutoGCRoot(v));
-		lua_pushnumber(l, val_fun_nargs(v));
-		lua_pushcclosure(l, haxe_callback, 2);
-	}
-	else
-	{
-		haxe_to_lua(v, l);
-	}
-}
-
 void haxe_iter_object(value v, field f, void *state)
 {
 	lua_State *l = (lua_State *)state;
 	const char *name = val_string(val_field_name(f));
 	lua_pushstring(l, name);
-	haxe_value(l, v, name);
+	haxe_to_lua(v, l);
 	lua_settable(l, -3);
 }
 
@@ -158,7 +141,7 @@ void haxe_iter_global(value v, field f, void *state)
 {
 	lua_State *l = (lua_State *)state;
 	const char *name = val_string(val_field_name(f));
-	haxe_value(l, v, name);
+	haxe_to_lua(v, l);
 	lua_setglobal(l, name);
 }
 
@@ -183,7 +166,12 @@ int haxe_to_lua(value v, lua_State *l)
 			lua_pushstring(l, val_string(v));
 			break;
 		case valtFunction:
-			return 0;
+			// TODO: figure out a way to delete/cleanup the AutoGCRoot pointers
+			lua_pushlightuserdata(l, new AutoGCRoot(v));
+			lua_pushnumber(l, val_fun_nargs(v));
+			// using a closure instead of a function so we can add upvalues
+			lua_pushcclosure(l, haxe_callback, 2);
+			break;
 		case valtArray:
 			haxe_array_to_lua(v, l);
 			break;
