@@ -1,9 +1,15 @@
 class TestLua extends haxe.unit.TestCase
 {
 
+	public function testNull()
+	{
+		assertEquals(null, Lua.run("return null"));
+	}
+
 	public function testBoolean()
 	{
 		assertTrue(Lua.run("return true"));
+		assertFalse(Lua.run("return false"));
 	}
 
 	public function testArray()
@@ -61,7 +67,17 @@ class TestLua extends haxe.unit.TestCase
 
 	public function testFunctionArgs()
 	{
-		assertEquals(15, Lua.run("return num(true, 1)", {num: function(a:Bool, b:Int) { return 15; }}));
+		assertEquals(15, Lua.run("return num(true, 1)", {
+			num: function(a:Bool, b:Int) { return 15; }
+		}));
+	}
+
+	public function testFunctionPassThrough()
+	{
+		assertEquals("hello world", Lua.run('return greet(message)', {
+			message: "hello world",
+			greet: function(greeting:String) { return greeting; }
+		}));
 	}
 
 	public static function main()
