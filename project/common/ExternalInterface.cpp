@@ -7,16 +7,25 @@
 #endif
 
 #include <hx/CFFI.h>
+#include <cmath>
+#include <vector>
+#include <string>
 
 extern "C" {
 	#include "lua.h"
 	#include "lauxlib.h"
 	#include "lualib.h"
-	#include "math.h"
 }
 
+struct Func {
+	AutoGCRoot *root;
+	std::string name;
+};
+
+std::vector<Func> gFuncs;
+
 // forward declarations
-void haxe_to_lua(value v, lua_State *l);
+int haxe_to_lua(value v, lua_State *l);
 value lua_value_to_haxe(lua_State *l, int lua_v);
 
 #define BEGIN_TABLE_LOOP(l, v) lua_pushnil(l); \
@@ -102,23 +111,62 @@ inline void haxe_array_to_lua(value v, lua_State *l)
 	}
 }
 
+static int haxe_callback(lua_State *l)
+{
+	const char *func_name = lua_tostring(l, 0);
+	// loop through and find the function
+	// TODO: make this faster with a map?
+	for (std::vector<Func>::iterator it = gFuncs.begin(); it != gFuncs.end(); ++it)
+	{
+		if (strcmp((*it).name.c_str(), func_name) == 0)
+		{
+			int num_args = 0;
+			value *args = new value[num_args];
+			value result = val_callN((*it).root->get(), args, num_args);
+			delete [] args;
+			return haxe_to_lua(result, l);
+		}
+	}
+	return 0;
+}
+
+void haxe_value(lua_State *l, value v, const char *name)
+{
+	if (val_is_function(v))
+	{
+		// register a new function callback
+		Func f;
+		f.root = new AutoGCRoot(v);
+		f.name = name;
+		// TODO: check that name isn't already registered as function
+		gFuncs.push_back(f);
+		lua_pushcfunction(l, haxe_callback);
+	}
+	else
+	{
+		haxe_to_lua(v, l);
+	}
+}
+
 void haxe_iter_object(value v, field f, void *state)
 {
 	lua_State *l = (lua_State *)state;
 	const char *name = val_string(val_field_name(f));
 	lua_pushstring(l, name);
-	haxe_to_lua(v, l);
+	haxe_value(l, v, name);
 	lua_settable(l, -3);
 }
 
 void haxe_iter_global(value v, field f, void *state)
 {
 	lua_State *l = (lua_State *)state;
-	haxe_to_lua(v, l);
-	lua_setglobal(l, val_string(val_field_name(f)));
+	const char *name = val_string(val_field_name(f));
+	haxe_value(l, v, name);
+	lua_setglobal(l, name);
 }
 
-void haxe_to_lua(value v, lua_State *l)
+// convert haxe values to lua
+int haxe_to_lua(value v, lua_State *l)
 {
 	switch (val_type(v))
 	{
@@ -138,19 +186,20 @@ void haxe_to_lua(value v, lua_State *l)
 			lua_pushstring(l, val_string(v));
 			break;
 		case valtFunction:
-			break;
+			return 0;
 		case valtArray:
 			haxe_array_to_lua(v, l);
 			break;
-		case valtAbstractBase: // abstract
-			break;
-		case valtObject:
-		case valtEnum:
+		case valtAbstractBase: // should abstracts be handled??
+			return 0;
+		case valtObject: // falls through
+		case valtEnum: // falls through
 		case valtClass:
 			lua_createtable(l, 0, 0);
 			val_iter_fields(v, haxe_iter_object, l);
 			break;
 	}
+	return 1;
 }
 
 static value lua_execute(value inScript, value inContext)
