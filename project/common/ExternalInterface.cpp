@@ -196,13 +196,15 @@ int haxe_to_lua(value v, lua_State *l)
 static value lua_execute(value inScript, value inContext)
 {
 	value v;
-	lua_State *l = luaL_newstate();
+	lua_State *l;
 	static const luaL_Reg lualibs[] = {
 		{ "base", luaopen_base },
 		{ "math", luaopen_math },
 		{ "table", luaopen_table },
 		{ NULL, NULL }
 	};
+
+	l = luaL_newstate();
 
 	// load libraries
 	const luaL_Reg *lib = lualibs;
