@@ -59,6 +59,11 @@ class TestLua extends haxe.unit.TestCase
 		assertEquals(true, Lua.run("return num()", {num: function() { return true; }}));
 	}
 
+	public function testFunctionArgs()
+	{
+		assertEquals(15, Lua.run("return num(true, 1)", {num: function(a:Bool, b:Int) { return 15; }}));
+	}
+
 	public static function main()
 	{
 		var runner = new haxe.unit.TestRunner();

@@ -17,12 +17,8 @@ extern "C" {
 	#include "lualib.h"
 }
 
-struct Func {
-	AutoGCRoot *root;
-	std::string name;
-};
-
-std::vector<Func> gFuncs;
+// HACK!!! For some reason this isn't properly defined in neko...
+#define val_fun_nargs(v)	((vfunction*)(v))->nargs
 
 // forward declarations
 int haxe_to_lua(value v, lua_State *l);
@@ -113,19 +109,23 @@ inline void haxe_array_to_lua(value v, lua_State *l)
 
 static int haxe_callback(lua_State *l)
 {
-	const char *func_name = lua_tostring(l, 0);
-	// loop through and find the function
-	// TODO: make this faster with a map?
-	for (std::vector<Func>::iterator it = gFuncs.begin(); it != gFuncs.end(); ++it)
+	int num_args = lua_gettop(l);
+	AutoGCRoot *root = (AutoGCRoot *)lua_topointer(l, lua_upvalueindex(1));
+	int expected_args = lua_tonumber(l, lua_upvalueindex(2));
+	if (num_args != expected_args)
 	{
-		if (strcmp((*it).name.c_str(), func_name) == 0)
+		printf("Expected %d arguments, received %d", expected_args, num_args);
+	}
+	else
+	{
+		value *args = new value[num_args];
+		for (int i = 0; i < num_args; ++i)
 		{
-			int num_args = 0;
-			value *args = new value[num_args];
-			value result = val_callN((*it).root->get(), args, num_args);
-			delete [] args;
-			return haxe_to_lua(result, l);
+			args[i] = lua_value_to_haxe(l, i + 1);
 		}
+		value result = val_callN(root->get(), args, num_args);
+		delete [] args;
+		return haxe_to_lua(result, l);
 	}
 	return 0;
 }
@@ -134,13 +134,10 @@ void haxe_value(lua_State *l, value v, const char *name)
 {
 	if (val_is_function(v))
 	{
-		// register a new function callback
-		Func f;
-		f.root = new AutoGCRoot(v);
-		f.name = name;
-		// TODO: check that name isn't already registered as function
-		gFuncs.push_back(f);
-		lua_pushcfunction(l, haxe_callback);
+		// TODO: figure out a way to delete/cleanup the AutoGCRoot pointers
+		lua_pushlightuserdata(l, new AutoGCRoot(v));
+		lua_pushnumber(l, val_fun_nargs(v));
+		lua_pushcclosure(l, haxe_callback, 2);
 	}
 	else
 	{
