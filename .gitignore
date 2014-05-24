@@ -1,5 +1,7 @@
 *.n
 obj/
+all_objs
+*.pdb
 
 .DS_Store
 Thumbs.db
