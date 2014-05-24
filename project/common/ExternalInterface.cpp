@@ -16,7 +16,9 @@ extern "C" {
 }
 
 // HACK!!! For some reason this isn't properly defined in neko...
+#if !defined(IPHONE) && !defined(ANDROID)
 #define val_fun_nargs(v)	((vfunction*)(v))->nargs
+#endif
 
 // forward declarations
 int haxe_to_lua(value v, lua_State *l);
@@ -26,7 +28,7 @@ value lua_value_to_haxe(lua_State *l, int lua_v);
 	while (lua_next(l, v) != 0) {
 #define END_TABLE_LOOP(l) lua_pop(l, 1); }
 
-value lua_table_to_haxe(lua_State *l, int lua_v)
+inline value lua_table_to_haxe(lua_State *l, int lua_v)
 {
 	value v;
 	int field_count = 0;
@@ -71,9 +73,6 @@ value lua_value_to_haxe(lua_State *l, int lua_v)
 		case LUA_TNIL:
 			v = alloc_null();
 			break;
-		case LUA_TFUNCTION:
-			printf("function return is unsupported");
-			break;
 		case LUA_TNUMBER:
 			n = lua_tonumber(l, lua_v);
 			// check if number is int or float
@@ -88,21 +87,14 @@ value lua_value_to_haxe(lua_State *l, int lua_v)
 		case LUA_TBOOLEAN:
 			v = alloc_bool(lua_toboolean(l, lua_v));
 			break;
+		case LUA_TFUNCTION:
+		case LUA_TUSERDATA:
+		case LUA_TTHREAD:
+		case LUA_TLIGHTUSERDATA:
+			printf("return value not supported");
+			break;
 	}
 	return v;
-}
-
-inline void haxe_array_to_lua(value v, lua_State *l)
-{
-	int size = val_array_size(v);
-	value *arr = val_array_value(v);
-	lua_createtable(l, size, 0);
-	for (int i = 0; i < size; i++)
-	{
-		lua_pushnumber(l, i + 1);
-		haxe_to_lua(arr[i], l);
-		lua_settable(l, -3);
-	}
 }
 
 static int haxe_callback(lua_State *l)
@@ -126,6 +118,19 @@ static int haxe_callback(lua_State *l)
 		return haxe_to_lua(result, l);
 	}
 	return 0;
+}
+
+inline void haxe_array_to_lua(value v, lua_State *l)
+{
+	int size = val_array_size(v);
+	value *arr = val_array_value(v);
+	lua_createtable(l, size, 0);
+	for (int i = 0; i < size; i++)
+	{
+		lua_pushnumber(l, i + 1); // lua index is 1 based instead of 0
+		haxe_to_lua(arr[i], l);
+		lua_settable(l, -3);
+	}
 }
 
 void haxe_iter_object(value v, field f, void *state)
@@ -176,11 +181,12 @@ int haxe_to_lua(value v, lua_State *l)
 			haxe_array_to_lua(v, l);
 			break;
 		case valtAbstractBase: // should abstracts be handled??
+			printf("abstracts not supported");
 			return 0;
 		case valtObject: // falls through
 		case valtEnum: // falls through
 		case valtClass:
-			lua_createtable(l, 0, 0);
+			lua_newtable(l);
 			val_iter_fields(v, haxe_iter_object, l);
 			break;
 	}

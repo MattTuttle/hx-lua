@@ -31,7 +31,7 @@ class TestLua extends haxe.unit.TestCase
 
 	public function testObjectToTable()
 	{
-		assertTrue(Lua.run('return foo["bar"]', {foo: {bar: true}}));
+		assertTrue(Lua.run('return foo.bar', {foo: {bar: true}}));
 	}
 
 	public function testReturnTable()
