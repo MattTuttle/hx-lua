@@ -17,31 +17,74 @@ extern "C" {
 
 // forward declarations
 void haxe_to_lua(value v, lua_State *l);
+value lua_value_to_haxe(lua_State *l, int lua_v);
 
-value lua_to_haxe(lua_State *l)
+#define BEGIN_TABLE_LOOP(l, v) lua_pushnil(l); \
+	while (lua_next(l, v) != 0) {
+#define END_TABLE_LOOP(l) lua_pop(l, 1); }
+
+value lua_table_to_haxe(lua_State *l, int lua_v)
+{
+	value v;
+	int field_count = 0;
+	bool array = true;
+
+	// count the number of key/value pairs and figure out if it's an array or object
+	BEGIN_TABLE_LOOP(l, lua_v)
+		// check for all number keys (array), otherwise it's an object
+		if (lua_type(l, -2) != LUA_TNUMBER) array = false;
+
+		field_count += 1;
+	END_TABLE_LOOP(l)
+
+	if (array)
+	{
+		v = alloc_array(field_count);
+		value *arr = val_array_value(v);
+		BEGIN_TABLE_LOOP(l, lua_v)
+			int index = (int)(lua_tonumber(l, -2) - 1); // lua has 1 based indices instead of 0
+			arr[index] = lua_value_to_haxe(l, lua_v+2);
+		END_TABLE_LOOP(l)
+	}
+	else
+	{
+		v = alloc_empty_object();
+		BEGIN_TABLE_LOOP(l, lua_v)
+			// TODO: don't assume string keys
+			const char *key = lua_tostring(l, -2);
+			alloc_field(v, val_id(key), lua_value_to_haxe(l, lua_v+2));
+		END_TABLE_LOOP(l)
+	}
+
+	return v;
+}
+
+value lua_value_to_haxe(lua_State *l, int lua_v)
 {
 	lua_Number n;
-	int lua_v;
 	value v;
-	while ((lua_v = lua_gettop(l)) != 0)
+	switch (lua_type(l, lua_v))
 	{
-		switch (lua_type(l, lua_v))
-		{
-			case LUA_TNUMBER:
-				n = lua_tonumber(l, lua_v);
-				// check if number is int or float
-				v = (fmod(n, 1) == 0) ? alloc_int(n) : alloc_float(n);
-				break;
-			case LUA_TTABLE:
-				break;
-			case LUA_TSTRING:
-				v = alloc_string(lua_tostring(l, lua_v));
-				break;
-			case LUA_TBOOLEAN:
-				v = alloc_bool(lua_toboolean(l, lua_v));
-				break;
-		}
-		lua_pop(l, 1);
+		case LUA_TNIL:
+			v = alloc_null();
+			break;
+		case LUA_TFUNCTION:
+			printf("function return is unsupported");
+			break;
+		case LUA_TNUMBER:
+			n = lua_tonumber(l, lua_v);
+			// check if number is int or float
+			v = (fmod(n, 1) == 0) ? alloc_int(n) : alloc_float(n);
+			break;
+		case LUA_TTABLE:
+			v = lua_table_to_haxe(l, lua_v);
+			break;
+		case LUA_TSTRING:
+			v = alloc_string(lua_tostring(l, lua_v));
+			break;
+		case LUA_TBOOLEAN:
+			v = alloc_bool(lua_toboolean(l, lua_v));
+			break;
 	}
 	return v;
 }
@@ -135,19 +178,20 @@ static value lua_execute(value inScript, value inContext)
 		val_iter_fields(inContext, haxe_iter_global, l);
 	}
 
-	// load the script
-	int status = luaL_loadstring(l, val_string(inScript));
-	int result = 0;
-	if (status == LUA_OK)
-	{
-		result = lua_pcall(l, 0, LUA_MULTRET, 0);
-	}
-	else
+	// run the script
+	if (luaL_dostring(l, val_string(inScript)) != LUA_OK)
 	{
 		return alloc_bool(false);
 	}
 
-	value v = lua_to_haxe(l);
+	// convert the lua values to haxe
+	value v;
+	int lua_v;
+	while ((lua_v = lua_gettop(l)) != 0)
+	{
+		v = lua_value_to_haxe(l, lua_v);
+		lua_pop(l, 1);
+	}
 
 	// close the lua state
 	lua_close(l);
