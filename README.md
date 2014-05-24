@@ -9,5 +9,5 @@ var result = Lua.run("return true"); // returns a Bool to Haxe
 
 Pass in values with a context object. The key names are used as variable names in the Lua script.
 ```haxe
-var result = Lua.run("if num > 14 then return 14 else return num end", {num: 15.3}));
+var result = Lua.run("if num > 14 then return 14 else return num end", {num: 15.3});
 ```
