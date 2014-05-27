@@ -8,6 +8,7 @@
 
 #include <hx/CFFI.h>
 #include <cmath>
+#include <cstring>
 
 extern "C" {
 	#include "lua.h"
