@@ -15,6 +15,8 @@ extern "C" {
 	#include "lualib.h"
 }
 
+vkind kind_lua_vm;
+
 // HACK!!! For some reason this isn't properly defined in neko...
 #if !(defined(IPHONE) || defined(ANDROID))
 #define val_fun_nargs(v)	((vfunction*)(v))->nargs
@@ -193,62 +195,120 @@ int haxe_to_lua(value v, lua_State *l)
 	return 1;
 }
 
-static value lua_execute(value inScript, value inContext)
+static lua_State *lua_from_handle(value inHandle)
 {
-	value v;
-	lua_State *l;
+	if (val_is_kind(inHandle, kind_lua_vm))
+	{
+		lua_State *l = (lua_State *)val_to_kind(inHandle, kind_lua_vm);
+		return l;
+	}
+	return NULL;
+}
+
+static void release_lua(value inHandle)
+{
+	lua_State *l = lua_from_handle(inHandle);
+	if (l)
+	{
+		lua_close(l);
+	}
+}
+
+static value lua_create()
+{
+	lua_State *l = luaL_newstate();
+	value result = alloc_abstract(kind_lua_vm, l);
+	val_gc(result, release_lua);
+	return result;
+}
+DEFINE_PRIM(lua_create, 0);
+
+static value lua_load_libs(value inHandle, value inLibs)
+{
 	static const luaL_Reg lualibs[] = {
 		{ "base", luaopen_base },
+		{ "debug", luaopen_debug },
+		{ "io", luaopen_io },
 		{ "math", luaopen_math },
+		{ "os", luaopen_os },
+		{ "package", luaopen_package },
+		{ "string", luaopen_string },
 		{ "table", luaopen_table },
 		{ NULL, NULL }
 	};
 
-	l = luaL_newstate();
-
-	// load libraries
-	const luaL_Reg *lib = lualibs;
-	for (;lib->func != NULL; lib++)
+	lua_State *l = lua_from_handle(inHandle);
+	if (l)
 	{
-		luaL_requiref(l, lib->name, lib->func, 1);
-		lua_settop(l, 0);
-	}
+		int numLibs = val_array_size(inLibs);
+		value *libs = val_array_value(inLibs);
 
-	// load context, if any
-	if (!val_is_null(inContext) && val_is_object(inContext))
-	{
-		val_iter_fields(inContext, haxe_iter_global, l);
-	}
-
-	// run the script
-	if (luaL_dostring(l, val_string(inScript)) == LUA_OK)
-	{
-		// convert the lua values to haxe
-		int lua_v;
-		while ((lua_v = lua_gettop(l)) != 0)
+		for (int i = 0; i < numLibs; i++)
 		{
-			v = lua_value_to_haxe(l, lua_v);
-			lua_pop(l, 1);
+			const luaL_Reg *lib = lualibs;
+			for (;lib->func != NULL; lib++)
+			{
+				if (strcmp(val_string(libs[i]), lib->name) == 0)
+				{
+					// printf("loading lua library %s\n", lib->name);
+					luaL_requiref(l, lib->name, lib->func, 1);
+					lua_settop(l, 0);
+					break;
+				}
+			}
 		}
 	}
-	else
-	{
-		// get error message
-		v = alloc_string(lua_tostring(l, -1));
-		lua_pop(l, 1);
-	}
-
-	// close the lua state
-	lua_close(l);
-
-	return v;
+	return alloc_null();
 }
-DEFINE_PRIM(lua_execute, 2);
+DEFINE_PRIM(lua_load_libs, 2);
 
+static value lua_load_context(value inHandle, value inContext)
+{
+	lua_State *l = lua_from_handle(inHandle);
+	if (l)
+	{
+		// load context, if any
+		if (!val_is_null(inContext) && val_is_object(inContext))
+		{
+			val_iter_fields(inContext, haxe_iter_global, l);
+		}
+	}
+	return alloc_null();
+}
+DEFINE_PRIM(lua_load_context, 2);
+
+static value lua_run(value inHandle, value inScript)
+{
+	value v;
+	lua_State *l = lua_from_handle(inHandle);
+	if (l)
+	{
+		// run the script
+		if (luaL_dostring(l, val_string(inScript)) == LUA_OK)
+		{
+			// convert the lua values to haxe
+			int lua_v;
+			while ((lua_v = lua_gettop(l)) != 0)
+			{
+				v = lua_value_to_haxe(l, lua_v);
+				lua_pop(l, 1);
+			}
+		}
+		else
+		{
+			// get error message
+			v = alloc_string(lua_tostring(l, -1));
+			lua_pop(l, 1);
+		}
+		return v;
+	}
+	return alloc_null();
+}
+DEFINE_PRIM(lua_run, 2);
 
 extern "C" void lua_main()
 {
-	val_int(0); // Fix Neko init
+	kind_share(&kind_lua_vm, "lua::vm"); // Fix Neko init
 }
 DEFINE_ENTRY_POINT(lua_main);
 

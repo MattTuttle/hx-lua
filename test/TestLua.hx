@@ -80,6 +80,38 @@ class TestLua extends haxe.unit.TestCase
 		}));
 	}
 
+	public function testMathLibrary()
+	{
+		var lua = new Lua();
+		lua.loadLibs(["math"]);
+		assertEquals(3, lua.execute("return math.floor(3.6)"));
+	}
+
+	public function testMultipleInstances()
+	{
+		var l1 = new Lua(),
+			l2 = new Lua();
+
+		var context = {foo: 1};
+		l1.loadContext(context);
+
+		assertEquals(1, l1.execute("return foo"));
+
+		// change the context for l2
+		context.foo = 2;
+		l2.loadContext(context);
+
+		assertEquals(1, l1.execute("return foo"));
+		assertEquals(2, l2.execute("return foo"));
+
+		// change foo on l1 but not l2
+		context.foo = 3;
+		l1.loadContext(context);
+
+		assertEquals(3, l1.execute("return foo"));
+		assertEquals(2, l2.execute("return foo"));
+	}
+
 	public static function main()
 	{
 		var runner = new haxe.unit.TestRunner();

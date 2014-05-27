@@ -18,3 +18,15 @@ var result = Lua.run("return plus1(15)", { plus1: function(val:Int) { return val
 if (result == 16)
 	trace("success!");
 ```
+
+Lua instances
+=============
+
+It's possible to create multiple Lua instances to run scripts with different contexts/libraries.
+
+```haxe
+var lua = new Lua();
+lua.loadLibs(["base", "math"]);
+lua.loadContext({ myVar: 1 });
+var result = lua.execute("return myVar");
+```

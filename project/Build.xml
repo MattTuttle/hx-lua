@@ -42,15 +42,13 @@
 		<file name="lua/lmathlib.c" />
 		<file name="lua/lstrlib.c" />
 		<file name="lua/ltablib.c" />
-		<!-- additional libraries
-			<file name="lua/lbitlib.c" />
-			<file name="lua/lcorolib.c" />
-			<file name="lua/ldblib.c" />
-			<file name="lua/liolib.c" />
-			<file name="lua/loslib.c" />
-			<file name="lua/loadlib.c" />
-			<file name="lua/linit.c" />
-		-->
+		<file name="lua/lbitlib.c" />
+		<file name="lua/lcorolib.c" />
+		<file name="lua/ldblib.c" />
+		<file name="lua/liolib.c" />
+		<file name="lua/loslib.c" />
+		<file name="lua/loadlib.c" />
+		<file name="lua/linit.c" />
 	</files>
 
 	<set name="name_prefix" value="lib" if="iphone"/>
