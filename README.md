@@ -27,6 +27,6 @@ It's possible to create multiple Lua instances to run scripts with different con
 ```haxe
 var lua = new Lua();
 lua.loadLibs(["base", "math"]);
-lua.loadContext({ myVar: 1 });
+lua.setVars({ myVar: 1 });
 var result = lua.execute("return myVar");
 ```

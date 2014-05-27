@@ -93,20 +93,20 @@ class TestLua extends haxe.unit.TestCase
 			l2 = new Lua();
 
 		var context = {foo: 1};
-		l1.loadContext(context);
+		l1.setVars(context);
 
 		assertEquals(1, l1.execute("return foo"));
 
 		// change the context for l2
 		context.foo = 2;
-		l2.loadContext(context);
+		l2.setVars(context);
 
 		assertEquals(1, l1.execute("return foo"));
 		assertEquals(2, l2.execute("return foo"));
 
 		// change foo on l1 but not l2
 		context.foo = 3;
-		l1.loadContext(context);
+		l1.setVars(context);
 
 		assertEquals(3, l1.execute("return foo"));
 		assertEquals(2, l2.execute("return foo"));

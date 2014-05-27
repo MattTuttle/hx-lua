@@ -25,12 +25,12 @@ class Lua
 	}
 
 	/**
-	 * Defines variables in the lua context
-	 * @param context An object defining the lua variables to create
+	 * Defines variables in the lua vars
+	 * @param vars An object defining the lua variables to create
 	 */
-	public function loadContext(context:Dynamic)
+	public function setVars(vars:Dynamic)
 	{
-		lua_load_context(handle, context);
+		lua_load_context(handle, vars);
 	}
 
 	/**
@@ -46,13 +46,13 @@ class Lua
 	/**
 	 * Convienient way to run a lua script in Haxe without loading any libraries
 	 * @param script The lua script to run in a string
-	 * @param context An object defining the lua variables to create
+	 * @param vars An object defining the lua variables to create
 	 * @return The result from the lua script in Haxe
 	 */
-	public static function run(script:String, ?context:Dynamic):Dynamic
+	public static function run(script:String, ?vars:Dynamic):Dynamic
 	{
 		var lua = new Lua();
-		lua.loadContext(context);
+		lua.setVars(vars);
 		return lua.execute(script);
 	}
 
