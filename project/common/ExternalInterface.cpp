@@ -16,7 +16,7 @@ extern "C" {
 }
 
 // HACK!!! For some reason this isn't properly defined in neko...
-#if !defined(IPHONE) && !defined(ANDROID)
+#if !(defined(IPHONE) || defined(ANDROID))
 #define val_fun_nargs(v)	((vfunction*)(v))->nargs
 #endif
 
