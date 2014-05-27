@@ -11,3 +11,10 @@ Pass in values with a context object. The key names are used as variable names i
 ```haxe
 var result = Lua.run("if num > 14 then return 14 else return num end", {num: 15.3});
 ```
+
+What if you want to call a function created in Haxe from Lua? Just pass the function in the context!
+```haxe
+var result = Lua.run("plus1(15)", { plus1: function(val:Int) { return val + 1; } });
+if (result == 16)
+	trace("success!");
+```
