@@ -16,10 +16,19 @@ class Lua
 	}
 
 	/**
+	 * Get the version string from Lua
+	 */
+	public static var version(get, never):String;
+	private inline static function get_version():String
+	{
+		return lua_get_version();
+	}
+
+	/**
 	 * Loads lua libraries (base, debug, io, math, os, package, string, table)
 	 * @param libs An array of library names to load
 	 */
-	public function loadLibs(libs:Array<String>)
+	public function loadLibs(libs:Array<String>):Void
 	{
 		lua_load_libs(handle, libs);
 	}
@@ -28,7 +37,7 @@ class Lua
 	 * Defines variables in the lua vars
 	 * @param vars An object defining the lua variables to create
 	 */
-	public function setVars(vars:Dynamic)
+	public function setVars(vars:Dynamic):Void
 	{
 		lua_load_context(handle, vars);
 	}
@@ -82,6 +91,7 @@ class Lua
 	private var handle:Dynamic;
 
 	private static var lua_create = load("lua_create", 0);
+	private static var lua_get_version = load("lua_get_version", 0);
 	private static var lua_run = load("lua_run", 2);
 	private static var lua_load_context = load("lua_load_context", 2);
 	private static var lua_load_libs = load("lua_load_libs", 2);

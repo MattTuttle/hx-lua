@@ -1,6 +1,11 @@
 class TestLua extends haxe.unit.TestCase
 {
 
+	public function testVersion()
+	{
+		assertEquals("Lua 5.2", Lua.version);
+	}
+
 	public function testNull()
 	{
 		assertEquals(null, Lua.run("return null"));

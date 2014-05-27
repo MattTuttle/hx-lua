@@ -224,6 +224,12 @@ static value lua_create()
 }
 DEFINE_PRIM(lua_create, 0);
 
+static value lua_get_version()
+{
+	return alloc_string(LUA_VERSION);
+}
+DEFINE_PRIM(lua_get_version, 0);
+
 static value lua_load_libs(value inHandle, value inLibs)
 {
 	static const luaL_Reg lualibs[] = {
