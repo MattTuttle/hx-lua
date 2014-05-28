@@ -284,6 +284,40 @@ static value lua_load_context(value inHandle, value inContext)
 }
 DEFINE_PRIM(lua_load_context, 2);
 
+static value lua_call_function(value inHandle, value inFunction, value inArgs)
+{
+	const char *func = val_get_string(inFunction);
+	lua_State *l = lua_from_handle(inHandle);
+	if (l)
+	{
+		lua_getglobal(l, func);
+
+		int numArgs = 1;
+		if (val_is_array(inArgs))
+		{
+			numArgs = val_array_size(inArgs);
+			value *args = val_array_value(inArgs);
+			for (int i = 0; i < numArgs; i++)
+			{
+				haxe_to_lua(args[i], l);
+			}
+		}
+		else
+		{
+			haxe_to_lua(inArgs, l);
+		}
+
+		if (lua_pcall(l, numArgs, 1, 0) == 0)
+		{
+			value v = lua_value_to_haxe(l, -1);
+			lua_pop(l, 1);
+			return v;
+		}
+	}
+	return alloc_null();
+}
+DEFINE_PRIM(lua_call_function, 3);
+
 static value lua_run(value inHandle, value inScript)
 {
 	value v;

@@ -117,6 +117,25 @@ class TestLua extends haxe.unit.TestCase
 		assertEquals(2, l2.execute("return foo"));
 	}
 
+	public function testCallLuaFunction()
+	{
+		var lua = new Lua();
+		lua.execute("-- comment line
+function add(a, b)
+	return a + b
+end
+
+function sub(a, b)
+	return a - b
+end");
+
+		assertEquals(8, lua.call("add", [2, 6]));
+		assertEquals(29, lua.call("sub", [36, 7]));
+
+		assertEquals(null, lua.call("fail", 3)); // fails due to missing function
+		assertEquals(null, lua.call("sub", { fail: 3 })); // fails due to wrong number of arguments
+	}
+
 	public static function main()
 	{
 		var runner = new haxe.unit.TestRunner();

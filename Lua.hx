@@ -53,6 +53,16 @@ class Lua
 	}
 
 	/**
+	 * Calls a previously loaded lua function
+	 * @param func The lua function name (globals only)
+	 * @param args A single argument or array of arguments
+	 */
+	public function call(func:String, args:Dynamic):Dynamic
+	{
+		return lua_call_function(handle, func, args);
+	}
+
+	/**
 	 * Convienient way to run a lua script in Haxe without loading any libraries
 	 * @param script The lua script to run in a string
 	 * @param vars An object defining the lua variables to create
@@ -92,6 +102,7 @@ class Lua
 
 	private static var lua_create = load("lua_create", 0);
 	private static var lua_get_version = load("lua_get_version", 0);
+	private static var lua_call_function = load("lua_call_function", 3);
 	private static var lua_run = load("lua_run", 2);
 	private static var lua_load_context = load("lua_load_context", 2);
 	private static var lua_load_libs = load("lua_load_libs", 2);

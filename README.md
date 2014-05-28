@@ -30,3 +30,14 @@ lua.loadLibs(["base", "math"]);
 lua.setVars({ myVar: 1 });
 var result = lua.execute("return myVar");
 ```
+
+Calling Lua functions
+---------------------
+
+Calling global functions defined in lua can be done after executing a chunk of Lua code. You can either pass in a single value (for single argument functions) or an array (for multiple argument functions).
+
+```haxe
+var lua = new Lua();
+lua.execute("function add(a, b) return a + b end");
+var result = lua.call("add", [1, 5]); // returns 6
+```
