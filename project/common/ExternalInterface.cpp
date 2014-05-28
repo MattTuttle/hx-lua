@@ -318,7 +318,7 @@ static value lua_call_function(value inHandle, value inFunction, value inArgs)
 }
 DEFINE_PRIM(lua_call_function, 3);
 
-static value lua_run(value inHandle, value inScript)
+static value lua_execute(value inHandle, value inScript)
 {
 	value v;
 	lua_State *l = lua_from_handle(inHandle);
@@ -345,7 +345,7 @@ static value lua_run(value inHandle, value inScript)
 	}
 	return alloc_null();
 }
-DEFINE_PRIM(lua_run, 2);
+DEFINE_PRIM(lua_execute, 2);
 
 extern "C" void lua_main()
 {

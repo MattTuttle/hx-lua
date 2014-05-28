@@ -49,7 +49,7 @@ class Lua
 	 */
 	public function execute(script:String):Dynamic
 	{
-		return lua_run(handle, script);
+		return lua_execute(handle, script);
 	}
 
 	/**
@@ -103,7 +103,7 @@ class Lua
 	private static var lua_create = load("lua_create", 0);
 	private static var lua_get_version = load("lua_get_version", 0);
 	private static var lua_call_function = load("lua_call_function", 3);
-	private static var lua_run = load("lua_run", 2);
+	private static var lua_execute = load("lua_execute", 2);
 	private static var lua_load_context = load("lua_load_context", 2);
 	private static var lua_load_libs = load("lua_load_libs", 2);
 	private static var moduleInit:Bool = false;

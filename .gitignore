@@ -1,5 +1,6 @@
 *.n
 obj/
+bin/
 all_objs
 *.pdb
 
