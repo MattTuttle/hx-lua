@@ -49,9 +49,17 @@ inline value lua_table_to_haxe(lua_State *l, int lua_v)
 	{
 		v = alloc_array(field_count);
 		value *arr = val_array_value(v);
+
 		BEGIN_TABLE_LOOP(l, lua_v)
 			int index = (int)(lua_tonumber(l, -2) - 1); // lua has 1 based indices instead of 0
-			arr[index] = lua_value_to_haxe(l, lua_v+2);
+			if(arr)
+			{
+				arr[index] = lua_value_to_haxe(l, lua_v+2);
+			}
+			else
+			{
+				val_array_set_i(v, index, lua_value_to_haxe(l, lua_v+2));
+			}
 		END_TABLE_LOOP(l)
 	}
 	else
@@ -127,11 +135,20 @@ inline void haxe_array_to_lua(value v, lua_State *l)
 {
 	int size = val_array_size(v);
 	value *arr = val_array_value(v);
+
 	lua_createtable(l, size, 0);
 	for (int i = 0; i < size; i++)
 	{
 		lua_pushnumber(l, i + 1); // lua index is 1 based instead of 0
-		haxe_to_lua(arr[i], l);
+		if(arr)
+		{
+			haxe_to_lua(arr[i], l);
+		}
+		else
+		{
+			haxe_to_lua(val_array_i(v, i), l);
+		}
+
 		lua_settable(l, -3);
 	}
 }
@@ -141,7 +158,7 @@ void haxe_iter_object(value v, field f, void *state)
 	lua_State *l = (lua_State *)state;
 	const char *name = val_string(val_field_name(f));
 	lua_pushstring(l, name);
-	haxe_to_lua(v, l);
+	haxe_to_lua(val_field(v, f), l);
 	lua_settable(l, -3);
 }
 
@@ -149,7 +166,7 @@ void haxe_iter_global(value v, field f, void *state)
 {
 	lua_State *l = (lua_State *)state;
 	const char *name = val_string(val_field_name(f));
-	haxe_to_lua(v, l);
+	haxe_to_lua(val_field(v, f), l);
 	lua_setglobal(l, name);
 }
 
@@ -255,7 +272,18 @@ static value lua_load_libs(value inHandle, value inLibs)
 			const luaL_Reg *lib = lualibs;
 			for (;lib->func != NULL; lib++)
 			{
-				if (strcmp(val_string(libs[i]), lib->name) == 0)
+				const char* libname;
+
+				if(libs)
+				{
+					libname = val_string(libs[i]);
+				}
+				else
+				{
+					libname = val_string(val_array_i(inLibs, i));
+				}
+
+				if (strcmp(libname, lib->name) == 0)
 				{
 					// printf("loading lua library %s\n", lib->name);
 					luaL_requiref(l, lib->name, lib->func, 1);
@@ -299,7 +327,14 @@ static value lua_call_function(value inHandle, value inFunction, value inArgs)
 			value *args = val_array_value(inArgs);
 			for (int i = 0; i < numArgs; i++)
 			{
-				haxe_to_lua(args[i], l);
+				if(args)
+				{
+					haxe_to_lua(args[i], l);
+				}
+				else
+				{
+					haxe_to_lua(val_array_i(inArgs,i), l);
+				}
 			}
 		}
 		else
