@@ -30,9 +30,9 @@ value lua_value_to_haxe(lua_State *l, int lua_v);
 
 // ref: http://stackoverflow.com/questions/1438842/iterating-through-a-lua-table-from-c
 #define BEGIN_TABLE_LOOP(l, v) lua_pushnil(l); \
-	while (lua_next(l, v-1) != 0) { // v-1: the stack index of the table is begin pushed downward due to the lua_pushnil() call
-#define END_TABLE_LOOP(l) lua_pop(l, 1); } \
-	
+	while (lua_next(l, v < 0 ? v - 1 : v) != 0) { // v-1: the stack index of the table is begin pushed downward due to the lua_pushnil() call
+#define END_TABLE_LOOP(l) lua_pop(l, 1); } 
+
 
 inline value lua_table_to_haxe(lua_State *l, int lua_v)
 {
@@ -116,6 +116,7 @@ value lua_value_to_haxe(lua_State *l, int lua_v)
 		case LUA_TUSERDATA:
 		case LUA_TTHREAD:
 		case LUA_TLIGHTUSERDATA:
+			v = alloc_null();
 			printf("return value not supported");
 			break;
 	}
@@ -367,14 +368,14 @@ static value lua_call_function(value inHandle, value inFunction, value inArgs)
 }
 DEFINE_PRIM(lua_call_function, 3);
 
-static value lua_execute(value inHandle, value inScript)
+static value lua_execute(value inHandle, value inScriptOrFile, value isFile)
 {
 	value v;
 	lua_State *l = lua_from_handle(inHandle);
 	if (l)
 	{
 		// run the script
-		if (luaL_dostring(l, val_string(inScript)) == LUA_OK)
+		if ((val_bool(isFile) ? luaL_dofile(l, val_string(inScriptOrFile)) : luaL_dostring(l, val_string(inScriptOrFile))) == LUA_OK)
 		{
 			// convert the lua values to haxe
 			int lua_v;
@@ -394,7 +395,7 @@ static value lua_execute(value inHandle, value inScript)
 	}
 	return alloc_null();
 }
-DEFINE_PRIM(lua_execute, 2);
+DEFINE_PRIM(lua_execute, 3);
 
 extern "C" void lua_main()
 {
