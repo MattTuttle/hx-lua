@@ -44,7 +44,7 @@ inline value lua_table_to_haxe(lua_State *l, int lua_v)
 	BEGIN_TABLE_LOOP(l, lua_v)
 		// check for all number (int) keys (array), otherwise it's an object
 		if (lua_type(l, -2) != LUA_TNUMBER) array = false;
-		else if (fmod(lua_tonumber(l, -2), 1) != 0) array = false;
+		else if (lua_tonumber(l, -2) < 1 || fmod(lua_tonumber(l, -2), 1) != 0) array = false;
 
 		field_count += 1;
 	END_TABLE_LOOP(l)
@@ -58,6 +58,7 @@ inline value lua_table_to_haxe(lua_State *l, int lua_v)
 			int index = (int)(lua_tonumber(l, -2) - 1); // lua has 1 based indices instead of 0
 			if(arr)
 			{
+				// TODO: some glitch if the index not continuous (i.e. array with "holes")
 				arr[index] = lua_value_to_haxe(l, -1);
 			}
 			else
