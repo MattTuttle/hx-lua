@@ -9,6 +9,7 @@
 #include <hx/CFFI.h>
 #include <cmath>
 #include <cstring>
+#include <sstream>
 
 extern "C" {
 	#include "lua.h"
@@ -27,9 +28,11 @@ vkind kind_lua_vm;
 int haxe_to_lua(value v, lua_State *l);
 value lua_value_to_haxe(lua_State *l, int lua_v);
 
+// ref: http://stackoverflow.com/questions/1438842/iterating-through-a-lua-table-from-c
 #define BEGIN_TABLE_LOOP(l, v) lua_pushnil(l); \
-	while (lua_next(l, v) != 0) {
-#define END_TABLE_LOOP(l) lua_pop(l, 1); }
+	while (lua_next(l, v-1) != 0) { // v-1: the stack index of the table is begin pushed downward due to the lua_pushnil() call
+#define END_TABLE_LOOP(l) lua_pop(l, 1); } \
+	
 
 inline value lua_table_to_haxe(lua_State *l, int lua_v)
 {
@@ -39,8 +42,9 @@ inline value lua_table_to_haxe(lua_State *l, int lua_v)
 
 	// count the number of key/value pairs and figure out if it's an array or object
 	BEGIN_TABLE_LOOP(l, lua_v)
-		// check for all number keys (array), otherwise it's an object
+		// check for all number (int) keys (array), otherwise it's an object
 		if (lua_type(l, -2) != LUA_TNUMBER) array = false;
+		else if (fmod(lua_tonumber(l, -2), 1) != 0) array = false;
 
 		field_count += 1;
 	END_TABLE_LOOP(l)
@@ -54,11 +58,11 @@ inline value lua_table_to_haxe(lua_State *l, int lua_v)
 			int index = (int)(lua_tonumber(l, -2) - 1); // lua has 1 based indices instead of 0
 			if(arr)
 			{
-				arr[index] = lua_value_to_haxe(l, lua_v+2);
+				arr[index] = lua_value_to_haxe(l, -1);
 			}
 			else
 			{
-				val_array_set_i(v, index, lua_value_to_haxe(l, lua_v+2));
+				val_array_set_i(v, index, lua_value_to_haxe(l, -1));
 			}
 		END_TABLE_LOOP(l)
 	}
@@ -66,9 +70,18 @@ inline value lua_table_to_haxe(lua_State *l, int lua_v)
 	{
 		v = alloc_empty_object();
 		BEGIN_TABLE_LOOP(l, lua_v)
-			// TODO: don't assume string keys
-			const char *key = lua_tostring(l, -2);
-			alloc_field(v, val_id(key), lua_value_to_haxe(l, lua_v+2));
+			switch(lua_type(l, -2))
+			{
+				case LUA_TSTRING:
+					alloc_field(v, val_id(lua_tostring(l, -2)), lua_value_to_haxe(l, -1));
+					break;
+				case LUA_TNUMBER:
+					std::ostringstream ss;
+					ss << lua_tonumber(l, -2);
+					alloc_field(v, val_id(ss.str().c_str()), lua_value_to_haxe(l, -1));
+					break;
+			}
+			
 		END_TABLE_LOOP(l)
 	}
 
