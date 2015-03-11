@@ -9,6 +9,7 @@
 #include <hx/CFFI.h>
 #include <cmath>
 #include <cstring>
+#include <sstream>
 
 extern "C" {
 	#include "lua.h"
@@ -27,9 +28,11 @@ vkind kind_lua_vm;
 int haxe_to_lua(value v, lua_State *l);
 value lua_value_to_haxe(lua_State *l, int lua_v);
 
+// ref: http://stackoverflow.com/questions/1438842/iterating-through-a-lua-table-from-c
 #define BEGIN_TABLE_LOOP(l, v) lua_pushnil(l); \
-	while (lua_next(l, v) != 0) {
-#define END_TABLE_LOOP(l) lua_pop(l, 1); }
+	while (lua_next(l, v < 0 ? v - 1 : v) != 0) { // v-1: the stack index of the table is begin pushed downward due to the lua_pushnil() call
+#define END_TABLE_LOOP(l) lua_pop(l, 1); } 
+
 
 inline value lua_table_to_haxe(lua_State *l, int lua_v)
 {
@@ -39,8 +42,9 @@ inline value lua_table_to_haxe(lua_State *l, int lua_v)
 
 	// count the number of key/value pairs and figure out if it's an array or object
 	BEGIN_TABLE_LOOP(l, lua_v)
-		// check for all number keys (array), otherwise it's an object
+		// check for all number (int) keys (array), otherwise it's an object
 		if (lua_type(l, -2) != LUA_TNUMBER) array = false;
+		else if (lua_tonumber(l, -2) < 1 || fmod(lua_tonumber(l, -2), 1) != 0) array = false;
 
 		field_count += 1;
 	END_TABLE_LOOP(l)
@@ -49,18 +53,36 @@ inline value lua_table_to_haxe(lua_State *l, int lua_v)
 	{
 		v = alloc_array(field_count);
 		value *arr = val_array_value(v);
+
 		BEGIN_TABLE_LOOP(l, lua_v)
 			int index = (int)(lua_tonumber(l, -2) - 1); // lua has 1 based indices instead of 0
-			arr[index] = lua_value_to_haxe(l, lua_v+2);
+			if(arr)
+			{
+				// TODO: some glitch if the index not continuous (i.e. array with "holes")
+				arr[index] = lua_value_to_haxe(l, -1);
+			}
+			else
+			{
+				val_array_set_i(v, index, lua_value_to_haxe(l, -1));
+			}
 		END_TABLE_LOOP(l)
 	}
 	else
 	{
 		v = alloc_empty_object();
 		BEGIN_TABLE_LOOP(l, lua_v)
-			// TODO: don't assume string keys
-			const char *key = lua_tostring(l, -2);
-			alloc_field(v, val_id(key), lua_value_to_haxe(l, lua_v+2));
+			switch(lua_type(l, -2))
+			{
+				case LUA_TSTRING:
+					alloc_field(v, val_id(lua_tostring(l, -2)), lua_value_to_haxe(l, -1));
+					break;
+				case LUA_TNUMBER:
+					std::ostringstream ss;
+					ss << lua_tonumber(l, -2);
+					alloc_field(v, val_id(ss.str().c_str()), lua_value_to_haxe(l, -1));
+					break;
+			}
+			
 		END_TABLE_LOOP(l)
 	}
 
@@ -94,6 +116,7 @@ value lua_value_to_haxe(lua_State *l, int lua_v)
 		case LUA_TUSERDATA:
 		case LUA_TTHREAD:
 		case LUA_TLIGHTUSERDATA:
+			v = alloc_null();
 			printf("return value not supported");
 			break;
 	}
@@ -127,11 +150,20 @@ inline void haxe_array_to_lua(value v, lua_State *l)
 {
 	int size = val_array_size(v);
 	value *arr = val_array_value(v);
+
 	lua_createtable(l, size, 0);
 	for (int i = 0; i < size; i++)
 	{
 		lua_pushnumber(l, i + 1); // lua index is 1 based instead of 0
-		haxe_to_lua(arr[i], l);
+		if(arr)
+		{
+			haxe_to_lua(arr[i], l);
+		}
+		else
+		{
+			haxe_to_lua(val_array_i(v, i), l);
+		}
+
 		lua_settable(l, -3);
 	}
 }
@@ -141,7 +173,7 @@ void haxe_iter_object(value v, field f, void *state)
 	lua_State *l = (lua_State *)state;
 	const char *name = val_string(val_field_name(f));
 	lua_pushstring(l, name);
-	haxe_to_lua(v, l);
+	haxe_to_lua(val_field(v, f), l);
 	lua_settable(l, -3);
 }
 
@@ -149,7 +181,7 @@ void haxe_iter_global(value v, field f, void *state)
 {
 	lua_State *l = (lua_State *)state;
 	const char *name = val_string(val_field_name(f));
-	haxe_to_lua(v, l);
+	haxe_to_lua(val_field(v, f), l);
 	lua_setglobal(l, name);
 }
 
@@ -255,7 +287,18 @@ static value lua_load_libs(value inHandle, value inLibs)
 			const luaL_Reg *lib = lualibs;
 			for (;lib->func != NULL; lib++)
 			{
-				if (strcmp(val_string(libs[i]), lib->name) == 0)
+				const char* libname;
+
+				if(libs)
+				{
+					libname = val_string(libs[i]);
+				}
+				else
+				{
+					libname = val_string(val_array_i(inLibs, i));
+				}
+
+				if (strcmp(libname, lib->name) == 0)
 				{
 					// printf("loading lua library %s\n", lib->name);
 					luaL_requiref(l, lib->name, lib->func, 1);
@@ -299,7 +342,14 @@ static value lua_call_function(value inHandle, value inFunction, value inArgs)
 			value *args = val_array_value(inArgs);
 			for (int i = 0; i < numArgs; i++)
 			{
-				haxe_to_lua(args[i], l);
+				if(args)
+				{
+					haxe_to_lua(args[i], l);
+				}
+				else
+				{
+					haxe_to_lua(val_array_i(inArgs,i), l);
+				}
 			}
 		}
 		else
@@ -318,14 +368,14 @@ static value lua_call_function(value inHandle, value inFunction, value inArgs)
 }
 DEFINE_PRIM(lua_call_function, 3);
 
-static value lua_execute(value inHandle, value inScript)
+static value lua_execute(value inHandle, value inScriptOrFile, value isFile)
 {
 	value v;
 	lua_State *l = lua_from_handle(inHandle);
 	if (l)
 	{
 		// run the script
-		if (luaL_dostring(l, val_string(inScript)) == LUA_OK)
+		if ((val_bool(isFile) ? luaL_dofile(l, val_string(inScriptOrFile)) : luaL_dostring(l, val_string(inScriptOrFile))) == LUA_OK)
 		{
 			// convert the lua values to haxe
 			int lua_v;
@@ -345,7 +395,7 @@ static value lua_execute(value inHandle, value inScript)
 	}
 	return alloc_null();
 }
-DEFINE_PRIM(lua_execute, 2);
+DEFINE_PRIM(lua_execute, 3);
 
 extern "C" void lua_main()
 {
