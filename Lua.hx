@@ -49,7 +49,17 @@ class Lua
 	 */
 	public function execute(script:String):Dynamic
 	{
-		return lua_execute(handle, script);
+		return lua_execute(handle, script, false);
+	}
+	
+	/**
+	 * Runs a lua file
+	 * @param path The path of the lua file to run
+	 * @return The result from the lua script in Haxe
+	 */
+	public function executeFile(path:String):Dynamic
+	{
+		return lua_execute(handle, path, true);
 	}
 
 	/**
@@ -73,6 +83,18 @@ class Lua
 		var lua = new Lua();
 		lua.setVars(vars);
 		return lua.execute(script);
+	}
+	/**
+	 * Convienient way to run a lua file in Haxe without loading any libraries
+	 * @param script The path of the lua file to run
+	 * @param vars An object defining the lua variables to create
+	 * @return The result from the lua script in Haxe
+	 */
+	public static function runFile(path:String, ?vars:Dynamic):Dynamic
+	{
+		var lua = new Lua();
+		lua.setVars(vars);
+		return lua.executeFile(path);
 	}
 
 	private static function load(func:String, numArgs:Int):Dynamic
@@ -103,7 +125,7 @@ class Lua
 	private static var lua_create = load("lua_create", 0);
 	private static var lua_get_version = load("lua_get_version", 0);
 	private static var lua_call_function = load("lua_call_function", 3);
-	private static var lua_execute = load("lua_execute", 2);
+	private static var lua_execute = load("lua_execute", 3);
 	private static var lua_load_context = load("lua_load_context", 2);
 	private static var lua_load_libs = load("lua_load_libs", 2);
 	private static var moduleInit:Bool = false;
